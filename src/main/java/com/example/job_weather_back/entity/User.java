@@ -14,28 +14,29 @@ import lombok.Data;
 @Data
 @Table(name = "user")
 public class User implements Serializable {
-    @Id
+  @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int user_sn;
+    @Column(name = "user_sn")
+    private int userSn;
 
-    @Column(nullable = false, length = 20)
-    private String user_name;
+    @Column(name = "user_name", nullable = false, length = 20)
+    private String userName;
 
-    @Column(length = 20)
-    private String user_pw;
+    @Column(name = "user_pw",  nullable = false, length = 20)
+    private String userPw;
 
-    @Column(length = 20)
-    private String user_phone;
+    @Column(name = "user_phone", length = 20)
+    private String userPhone;
 
-    @Column(length = 20)
+    @Column(length = 20,  nullable = false)
     private String email;
 
-    @Column(nullable = false, length = 20)
-    private String user_nickname;
+    @Column(name = "user_nickname", nullable = false, length = 20)
+    private String userNickname;
 
-    @Column(length = 225)
-    private String user_social_id;
+    @Column(name = "user_social_id", length = 225)
+    private String userSocialId;
 
-    @Column(length = 10)
-    private String user_delete;
+    @Column(name = "user_delete", length = 10)
+    private String userDelete = "0";
 }
