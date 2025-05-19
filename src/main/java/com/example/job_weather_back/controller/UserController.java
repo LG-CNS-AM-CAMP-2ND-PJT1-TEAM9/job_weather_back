@@ -1,14 +1,20 @@
 package com.example.job_weather_back.controller;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.job_weather_back.dto.LogInDto;
 import com.example.job_weather_back.dto.SignUpDto;
 import com.example.job_weather_back.entity.User;
 import com.example.job_weather_back.repository.UserRepository;
 
+import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +48,16 @@ public class UserController {
     public boolean checkNickname(@RequestParam String nickname) {
         return !userRepository.existsByUserNickname(nickname);
     }
-    
+   
+    @Transactional
+    @PostMapping("/login")
+	  public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
+		Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
+		if(opt.isPresent()) {
+      session.setAttribute("user_info", opt.get());
+			return ResponseEntity.ok(opt.get());
+    }
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+	}
 
 }
