@@ -1,0 +1,198 @@
+package com.example.job_weather_back.controller;
+
+import com.example.job_weather_back.entity.News;
+import com.example.job_weather_back.repository.NewsRepository;
+import com.example.job_weather_back.dto.NewsDto;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Locale;
+
+@RestController
+@RequestMapping("/news")
+public class NewsController {
+
+    @Autowired
+    private NewsRepository newsRepository;
+
+    // 네이버 뉴스 API 키
+    @Value("${naver.news.client-id}")
+    private String clientId;
+
+    @Value("${naver.news.client-secret}")
+    private String clientSecret;
+
+    // 채용 키워드 리스트
+    private static final List<String> KEYWORDS = Arrays.asList(
+        "취업", "채용", "구인", "일자리",
+        "신입", "경력", "공채", "채용시장",
+        "취업난", "취업률", "채용정보", "채용공고"
+    );
+
+    // 뉴스 검색
+    @GetMapping
+    public ResponseEntity<?> getNews(@RequestParam(required = false) String search) {
+        try {
+            List<News> newsList;
+            if (search != null && !search.trim().isEmpty()) {
+                // 검색어가 있는 경우 제목이나 설명에 검색어가 포함된 뉴스 검색
+                newsList = newsRepository.findByNewsTitleContainingOrNewsDescriptionContaining(
+                    search, search
+                );
+            } else {
+                // 검색어가 없는 경우 모든 뉴스를 날짜순으로 반환
+                newsList = newsRepository.findAllByOrderByNewsDateTimeDesc();
+            }
+
+            // News 엔티티를 NewsDto로 변환
+            List<NewsDto> newsDtoList = newsList.stream()
+                .map(news -> new NewsDto(
+                    news.getNewsSn(),
+                    news.getNewsTitle(),
+                    news.getNewsDescription(),
+                    news.getNewsLink(),
+                    news.getNewsDateTime()
+                ))
+                .collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                "items", newsDtoList,
+                "total", newsDtoList.size()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("뉴스를 불러오는데 실패했습니다: " + e.getMessage());
+        }
+    }
+
+    // 뉴스 가져오기 스케쥴링(10분)
+    @Scheduled(fixedRate = 600000) 
+    public void scheduledFetchNews() {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            System.out.println("뉴스 가져오기 시작: " + LocalDateTime.now().format(formatter));
+            ResponseEntity<?> response = fetchNews();
+            System.out.println(response.getBody());
+            System.out.println("뉴스 가져오기 완료: " + LocalDateTime.now().format(formatter));
+        } catch (Exception e) {
+            System.err.println("뉴스 가져오기 실패: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // 뉴스 가져와서 데이터베이스에 저장
+    private ResponseEntity<?> fetchNews() throws Exception {
+        // 키워드를 OR 연산자(|)로 연결
+        String searchQuery = String.join(" | ", KEYWORDS);
+        String encodedKeyword = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8.toString());
+
+        // DB에서 마지막으로 저장된 뉴스의 날짜 조회
+        LocalDateTime lastSavedDate = newsRepository.findTopByOrderByNewsDateTimeDesc()
+            .map(news -> news.getNewsDateTime())
+            .orElse(LocalDateTime.MIN);
+
+        // 현재 시간을 기준으로 설정
+        LocalDateTime currentTime = LocalDateTime.now();
+        
+        int totalSavedCount = 0;
+        int totalFoundCount = 0;
+        List<News> newsToSave = new ArrayList<>();
+
+        // 최대 1000개까지 가져오기 위해 10번 반복 (100개씩)
+        for (int start = 1; start <= 1000; start += 100) {
+            // API 요청
+            String urlStr = String.format(
+                "https://openapi.naver.com/v1/search/news.json?query=%s&display=100&sort=date&start=%d",
+                encodedKeyword, start
+            );
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("X-Naver-Client-Id", clientId);
+            conn.setRequestProperty("X-Naver-Client-Secret", clientSecret);
+
+            // 응답 읽기
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+
+            // JSON 파싱
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response.toString());
+            JsonNode items = root.get("items");
+            totalFoundCount = root.get("total").asInt();
+
+            if (items == null || !items.isArray() || items.size() == 0) {
+                break;
+            }
+
+            // 뉴스 수집
+            for (JsonNode item : items) {
+                String pubDateStr = item.get("pubDate").asText();
+                
+                LocalDateTime newsDate = LocalDateTime.parse(
+                    pubDateStr,
+                    DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH)
+                );
+
+                // 마지막 저장된 뉴스보다 최신이고 현재 시간 이전인 경우만 저장
+                if (newsDate.isAfter(lastSavedDate) && !newsDate.isAfter(currentTime)) {
+                    String title = item.get("title").asText().replaceAll("<[^>]*>", "");
+                    String description = item.get("description").asText().replaceAll("<[^>]*>", "");
+                    
+                    // 제목이나 설명에 키워드가 포함되어 있는지 확인
+                    boolean containsKeyword = KEYWORDS.stream()
+                        .anyMatch(keyword -> 
+                            title.contains(keyword) || description.contains(keyword)
+                        );
+
+                    if (containsKeyword) {
+                        News news = new News();
+                        news.setNewsTitle(title);
+                        news.setNewsDescription(description);
+                        news.setNewsLink(item.get("link").asText());
+                        news.setNewsDateTime(newsDate);
+                        newsToSave.add(news);
+                    }
+                }
+            }
+        }
+
+        // 수집된 뉴스를 시간순으로 정렬
+        newsToSave.sort(Comparator.comparing(News::getNewsDateTime));
+
+        // 정렬된 뉴스를 저장
+        for (News news : newsToSave) {
+            newsRepository.save(news);
+            totalSavedCount++;
+        }
+
+        return ResponseEntity.ok(String.format(
+            "검색된 뉴스: %d개, 저장된 뉴스: %d개 (마지막 저장 이후의 뉴스만 저장)",
+            totalFoundCount, totalSavedCount
+        ));
+    }
+} 
