@@ -17,12 +17,14 @@ import com.example.job_weather_back.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
-
+@CrossOrigin
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -52,12 +54,27 @@ public class UserController {
     @Transactional
     @PostMapping("/login")
 	  public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
-		Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
-		if(opt.isPresent()) {
-      session.setAttribute("user_info", opt.get());
-			return ResponseEntity.ok(opt.get());
-    }
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
+      if(opt.isPresent()) {
+        session.setAttribute("user_info", opt.get());
+        return ResponseEntity.ok(opt.get());
+      }
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 	}
+
+  //회원 탈퇴
+  @DeleteMapping("/delete")
+  public ResponseEntity<?> deleteUser(HttpSession session) {
+     User userInfo = (User) session.getAttribute("user_info");
+
+    if (userInfo == null) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
+    }
+    int id = userInfo.getUserSn();
+    userRepository.deleteById(id);
+    session.invalidate();
+
+    return ResponseEntity.ok("탈퇴 완료");
+  }
 
 }
