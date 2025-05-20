@@ -12,9 +12,23 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class WeatherInputMetricsDto {
-    private long dailyNewJobPostings;       // 오늘 등록된 신규 공고 수
-    private double changeRateFromYesterday;   // 어제 대비 공고 증감률 (예: 0.1은 10% 증가)
-    private int majorCompanyPostingCount;   // 주요 기업의 신규 공고 수
-    private String trendingKeywords;        // 최근 언급되는 주요 기술 스택 또는 키워드 (쉼표 구분 문자열 등)
-    // 추가적으로 필요한 지표들을 여기에 정의합니다.
+
+    // 오늘 등록된 전체 신입 개발자 공고 수
+    private long totalNewEntryLevelDeveloperJobsToday;
+
+    // 어제 대비 오늘 신규 신입 개발자 공고 수 변화량 (절대값, 예: +10, -5)
+    private int newJobsAbsoluteChangeFromYesterday;
+
+    // 주요 IT 기업 (예: 네카라쿠배 등 미리 정의된 리스트)의 오늘 신규 신입 개발자 공고 수
+    private int newJobsInMajorCompaniesToday;
+
+    // 오늘 신규 신입 개발자 공고 중 '원격/재택근무 가능' 옵션이 있는 공고 수
+    private int newJobsWithRemoteOptionToday;
+
+    // 오늘 신규 신입 개발자 공고 중 '정규직 전환형 인턴' 공고 수
+    private int newInternshipToFullTimeJobsToday;
+
+    // (선택적 추가 가능 지표)
+    // private double averageSalaryOfferIndicator; // 평균 제시 연봉 지표 (0-1 사이 정규화 값)
+    // private double competitionRatioIndicator; // 예상 경쟁률 지표 (0-1 사이 정규화 값, 낮을수록 좋음)
 }
