@@ -26,9 +26,9 @@ public class News {
     @Column(name = "news_description", length = 5000)
     private String newsDescription;
 
-    @Column(name = "news_originallink", length = 255)
-    private String newsOriginallink;
+    @Column(name = "news_link", length = 255)
+    private String newsLink;
 
-    @Column(name = "news_dateTime")
+    @Column(name = "news_date_time")
     private LocalDateTime newsDateTime;
 }
