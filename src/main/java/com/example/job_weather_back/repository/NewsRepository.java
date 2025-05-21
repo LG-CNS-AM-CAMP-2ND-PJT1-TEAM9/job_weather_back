@@ -19,4 +19,7 @@ public interface NewsRepository extends JpaRepository<News, Integer> {
 
     // 좋아요한 뉴스 출력
     List<News> findByNewsSn(int newsSn);
+
+    // 뉴스 링크로 중복 확인 (추가된 메소드)
+    boolean existsByNewsLink(String newsLink);
 } 
