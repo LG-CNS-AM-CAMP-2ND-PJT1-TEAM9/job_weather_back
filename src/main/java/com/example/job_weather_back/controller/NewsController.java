@@ -1,8 +1,11 @@
 package com.example.job_weather_back.controller;
 
-import com.example.job_weather_back.entity.News;
-import com.example.job_weather_back.repository.NewsRepository;
 import com.example.job_weather_back.dto.NewsDto;
+import com.example.job_weather_back.entity.LikedNews;
+import com.example.job_weather_back.entity.News;
+import com.example.job_weather_back.entity.User;
+import com.example.job_weather_back.repository.LikedNewsRepository;
+import com.example.job_weather_back.repository.NewsRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,13 +29,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Locale;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/news")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class NewsController {
 
     @Autowired
     private NewsRepository newsRepository;
+
+    @Autowired
+    private LikedNewsRepository likedNewsRepository;
 
     // 네이버 뉴스 API 키
     @Value("${naver.news.client-id}")
@@ -48,7 +56,7 @@ public class NewsController {
         "취업난", "취업률", "채용정보", "채용공고"
     );
 
-    // 뉴스 검색
+    // 프론트의 뉴스 검색 응답
     @GetMapping
     public ResponseEntity<?> getNews(@RequestParam(required = false) String search) {
         try {
@@ -83,8 +91,8 @@ public class NewsController {
         }
     }
 
-    // 뉴스 가져오기 스케쥴링(10분)
-    @Scheduled(fixedRate = 600000) 
+    //뉴스 가져오기 스케쥴링(30분)
+    @Scheduled(fixedRate = 30 * 60 * 1000) 
     public void scheduledFetchNews() {
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -194,5 +202,50 @@ public class NewsController {
             "검색된 뉴스: %d개, 저장된 뉴스: %d개 (마지막 저장 이후의 뉴스만 저장)",
             totalFoundCount, totalSavedCount
         ));
+    }
+
+    // 찜한 뉴스 목록 조회
+    @GetMapping("/liked")
+    public ResponseEntity<?> getLikedNews(@SessionAttribute("user_info") User user) {
+        List<LikedNews> likedNewsList = likedNewsRepository.findByUserUserSn(user.getUserSn());
+        List<Integer> likedNewsIds = likedNewsList.stream()
+                .map(likedNews -> likedNews.getNews().getNewsSn())
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(likedNewsIds); 
+    }
+
+    // 뉴스 찜하기/찜하기 취소
+    @PostMapping("/like")
+    public ResponseEntity<?> toggleLike(
+            @RequestBody Map<String, Integer> body,
+            @SessionAttribute("user_info") User user) {
+        
+        // 요청에서 뉴스 ID 체크
+        Integer newsSn = body.get("newsSn");
+        if (newsSn == null) {
+            return ResponseEntity.status(400).body(Map.of("message", "뉴스 ID가 필요합니다."));
+        }
+
+        // 뉴스 조회
+        News news = newsRepository.findById(newsSn).orElse(null);
+
+        if (news == null) {
+            return ResponseEntity.status(400).body(Map.of("message", "존재하지 않는 뉴스입니다."));
+        }
+
+        // 찜하기 토글
+        Optional<LikedNews> existingLike = likedNewsRepository.findByUserUserSnAndNewsNewsSn(user.getUserSn(), newsSn);
+        
+        if (existingLike.isPresent()) {
+            likedNewsRepository.delete(existingLike.get());
+            return ResponseEntity.ok().build();
+        } else {
+            LikedNews likedNews = new LikedNews();
+            likedNews.setUser(user);
+            likedNews.setNews(news);
+            likedNewsRepository.save(likedNews);
+            return ResponseEntity.ok().build();
+        }
     }
 } 

@@ -76,22 +76,6 @@ public class UserController {
     return userRepository.save(user);
   }
 
-  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
-  public boolean checkNickname(@RequestParam String nickname) {
-    return !userRepository.existsByUserNickname(nickname);
-  }
-
-  @Transactional
-  @PostMapping("/login")
-  public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
-    Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
-    if (opt.isPresent()) {
-      session.setAttribute("user_info", opt.get());
-      return ResponseEntity.ok(opt.get());
-    }
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-  }
-
   @Transactional
   @PostMapping("/reset-password")
   public ResponseEntity<User> resetPwPost(@RequestBody LogInDto dto) {
