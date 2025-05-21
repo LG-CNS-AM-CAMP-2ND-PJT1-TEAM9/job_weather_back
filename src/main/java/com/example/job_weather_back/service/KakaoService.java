@@ -92,4 +92,28 @@ public class KakaoService {
         }
     }
 
+
+      public void kakaoDelete(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + accessToken);
+        headers.add("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(null, headers);
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.postForEntity("https://kapi.kakao.com/v1/user/unlink", request, String.class);
+
+    }
+
+        public void kakaoLogout(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Bearer " + accessToken);
+        headers.add("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(null, headers);
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.postForEntity("https://kapi.kakao.com/v1/user/logout", request, String.class);
+
+    }
 }
