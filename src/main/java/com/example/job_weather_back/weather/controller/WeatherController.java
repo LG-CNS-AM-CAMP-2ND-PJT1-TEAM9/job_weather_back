@@ -1,4 +1,4 @@
-package com.example.job_weather_back.weather.controller;
+package com.example.job_weather_back.weather.controller; // 패키지명 weather.controller로 가정
 
 import com.example.job_weather_back.weather.dto.WeatherResponseDto;
 import com.example.job_weather_back.weather.service.WeatherService;
@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CrossOrigin; // CORS 사용 시
 
 import java.time.LocalDate;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/weather") // API 기본 경로 설정
+@RequestMapping("/api/weather")
+@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true") // 프론트엔드 주소에 맞게
 public class WeatherController {
 
     private final WeatherService weatherService;
@@ -25,26 +27,20 @@ public class WeatherController {
     }
 
     /**
-     * 오늘의 채용 날씨 정보를 생성하고 DB에 저장합니다.
-     * (보통 스케줄러가 담당하지만, 테스트를 위해 수동 트리거 엔드포인트를 만듭니다)
+     * (수동 트리거용) 오늘의 채용 날씨 정보를 생성하고 DB에 저장합니다.
      * @return 생성된 날씨 정보 또는 에러 메시지
      */
-    @PostMapping("/today/generate")
-    public ResponseEntity<?> generateTodaysWeather() {
+    @PostMapping("/today/generate-manual") // 경로를 명확히 구분
+    public ResponseEntity<?> generateTodaysWeatherManually() {
         try {
-            WeatherResponseDto responseDto = weatherService.generateAndSaveTodaysWeather();
+            WeatherResponseDto responseDto = weatherService.triggerTodaysWeatherGeneration();
             return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (Exception e) {
-            // 실제로는 좀 더 구체적인 예외 처리와 로깅이 필요합니다.
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("오늘의 날씨 정보 생성 중 오류 발생: " + e.getMessage());
+                    .body("오늘의 날씨 정보 수동 생성 중 오류 발생: " + e.getMessage());
         }
     }
 
-    /**
-     * 가장 최근에 생성된 채용 날씨 정보를 조회합니다.
-     * @return 최신 날씨 정보 또는 404 Not Found
-     */
     @GetMapping("/latest")
     public ResponseEntity<WeatherResponseDto> getLatestWeather() {
         Optional<WeatherResponseDto> weatherOpt = weatherService.getLatestWeatherReport();
@@ -52,11 +48,6 @@ public class WeatherController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /**
-     * 특정 날짜의 채용 날씨 정보를 조회합니다.
-     * @param date 조회할 날짜 (YYYY-MM-DD 형식)
-     * @return 해당 날짜의 날씨 정보 또는 404 Not Found
-     */
     @GetMapping("/{date}")
     public ResponseEntity<WeatherResponseDto> getWeatherByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
