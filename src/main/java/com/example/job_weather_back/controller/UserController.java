@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.job_weather_back.dto.KakaoDto;
 import com.example.job_weather_back.dto.LogInDto;
+import com.example.job_weather_back.dto.NaverDto;
 import com.example.job_weather_back.dto.SignUpDto;
 import com.example.job_weather_back.entity.User;
 import com.example.job_weather_back.repository.UserRepository;
 import com.example.job_weather_back.service.KakaoService;
+import com.example.job_weather_back.service.NaverService;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -31,35 +33,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
-
 @CrossOrigin
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
+
     private final KakaoService kakaoService;
-@Autowired
-  UserRepository userRepository;
+    private final NaverService naverService;
+    @Autowired UserRepository userRepository;
 
-     @GetMapping("/nickname") //닉네임 존재 여부 찾기
-    public boolean checkNickname(@RequestParam String nickname) {
-        return !userRepository.existsByUserNickname(nickname);
-    }
-   
-    @Transactional
-    @PostMapping("/login")
-	  public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
-      Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
-      if(opt.isPresent()) {
-        session.setAttribute("user_info", opt.get());
-        return ResponseEntity.ok(opt.get());
-      }
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-	}
-
-  
 
   @Transactional
   @PostMapping("/signup")
@@ -76,10 +60,6 @@ public class UserController {
     return userRepository.save(user);
   }
 
-  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
-  public boolean checkNickname(@RequestParam String nickname) {
-    return !userRepository.existsByUserNickname(nickname);
-  }
 
   @Transactional
   @PostMapping("/login")
@@ -91,6 +71,7 @@ public class UserController {
     }
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
+
 
   @Transactional
   @PostMapping("/reset-password")
@@ -120,8 +101,7 @@ public class UserController {
     return "https://kauth.kakao.com/oauth/authorize"
         + "?response_type=code"
         + "&client_id=" + client_id
-        + "&redirect_uri=" + redirect_uri
-        + "&prompt=login";
+        + "&redirect_uri=" + redirect_uri;
   }
 
   // kako사용자 정보 반환, 로그인 회원가입
@@ -142,6 +122,8 @@ public class UserController {
     User user;
     if (opt.isPresent()) {
       user = opt.get();
+      session.setAttribute("user_info", user);
+      session.setAttribute("access_token", accessToken);
     } else {
 
       user = new User();
@@ -154,26 +136,103 @@ public class UserController {
       userRepository.save(user);
       User savedUser = userRepository.save(user);
       session.setAttribute("user_info", savedUser);
+      session.setAttribute("access_token", accessToken);
     }
 
     response.sendRedirect("http://localhost:5173/");
   }
 
-
-
-  //회원 탈퇴
+  // 회원 탈퇴
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
+
      User userInfo = (User) session.getAttribute("user_info");
+   
+     String accessToken = (String) session.getAttribute("access_token");
+     if (accessToken != null) {
+         kakaoService.kakaoDelete(accessToken);
+     }
 
     if (userInfo == null) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
     }
+    
+
     int id = userInfo.getUserSn();
     userRepository.deleteById(id);
     session.invalidate();
 
     return ResponseEntity.ok("탈퇴 완료");
+  }
+
+  @PostMapping("/logout")
+  public void logout(HttpSession session, HttpServletResponse response) throws IOException{
+    String accessToken = (String) session.getAttribute("access_token");
+    if (accessToken != null) {
+        kakaoService.kakaoLogout(accessToken);
+    }
+
+    session.invalidate();
+    response.sendRedirect("http://localhost:5173/");
+}
+
+
+ @Value("${naver.client_id}")
+  private String naver_client_id;
+
+  @Value("${naver.redirect_uri}")
+  private String naver_redirect_uri;
+
+  @Value("${naver.client_secret}")
+  private String naver_client_secret;
+
+  // naver 로그인 url
+  @GetMapping("/naverlogin")
+  public String getNaverLoginUrl() {
+
+    return "https://nid.naver.com/oauth2.0/authorize"
+        + "?response_type=code"
+        + "&client_id=" + naver_client_id
+        + "&redirect_uri=" + naver_redirect_uri
+        + "&state=" + naver_client_secret;
+  }
+
+  //naverlogin
+  @GetMapping("/naver-login")
+  public void naverCallback(@RequestParam String code, HttpServletResponse response, HttpSession session)
+      throws IOException {
+
+    String accessToken = naverService.getAccessToken(code);
+    NaverDto userInfo = naverService.getUserInfo(accessToken);
+    String email = userInfo.getEmail();
+
+    if (email == null || email.isEmpty()) {
+      email = userInfo.getNaverId() + "@naver.com";
+    }
+
+    Optional<User> opt = userRepository.findByEmail(email);
+
+    User user;
+    if (opt.isPresent()) {
+      user = opt.get();
+      session.setAttribute("user_info", user);
+      session.setAttribute("access_token", accessToken);
+    } else {
+      user = new User();
+      user.setEmail(email);
+      user.setUserNickname(userInfo.getUserNickname());
+      user.setUserName(userInfo.getUserNickname());
+      user.setUserPw("naverpw_" + UUID.randomUUID().toString().substring(0, 7) + "!");
+      user.setUserSocialId("2");
+
+      userRepository.save(user);
+      User savedUser = userRepository.save(user);
+      session.setAttribute("user_info", savedUser);
+      session.setAttribute("access_token", accessToken);
+      
+    }
+
+    response.sendRedirect("http://localhost:5173/");
   }
 
 }
