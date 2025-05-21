@@ -31,16 +31,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
-
 @CrossOrigin
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
+
     private final KakaoService kakaoService;
     @Autowired UserRepository userRepository;
+
 
   @Transactional
   @PostMapping("/signup")
@@ -55,11 +55,6 @@ public class UserController {
     User savedUser = userRepository.save(user);
     System.out.println("Saved User SN: " + savedUser.getUserSn());
     return userRepository.save(user);
-  }
-
-  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
-  public boolean checkNickname(@RequestParam String nickname) {
-    return !userRepository.existsByUserNickname(nickname);
   }
 
   @Transactional
@@ -142,19 +137,19 @@ public class UserController {
     response.sendRedirect("http://localhost:5173/");
   }
 
-
-
-  //회원 탈퇴
+  // 회원 탈퇴
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
+
      User userInfo = (User) session.getAttribute("user_info");
    
      String accessToken = (String) session.getAttribute("access_token");
      if (accessToken != null) {
          kakaoService.kakaoDelete(accessToken);
      }
+
     if (userInfo == null) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
     }
     
 
