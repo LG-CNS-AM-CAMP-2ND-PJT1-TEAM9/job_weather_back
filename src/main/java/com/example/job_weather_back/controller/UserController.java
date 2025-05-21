@@ -57,6 +57,7 @@ public class UserController {
     return userRepository.save(user);
   }
 
+
   @Transactional
   @PostMapping("/login")
   public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
@@ -67,6 +68,7 @@ public class UserController {
     }
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
+
 
   @Transactional
   @PostMapping("/reset-password")
