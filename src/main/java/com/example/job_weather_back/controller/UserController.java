@@ -31,35 +31,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
-
 @CrossOrigin
 @Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
-    private final KakaoService kakaoService;
-@Autowired
+  private final KakaoService kakaoService;
+  @Autowired
   UserRepository userRepository;
-
-     @GetMapping("/nickname") //닉네임 존재 여부 찾기
-    public boolean checkNickname(@RequestParam String nickname) {
-        return !userRepository.existsByUserNickname(nickname);
-    }
-   
-    @Transactional
-    @PostMapping("/login")
-	  public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
-      Optional<User> opt = userRepository.findByEmailAndUserPw(dto.getEmail(), dto.getPw());
-      if(opt.isPresent()) {
-        session.setAttribute("user_info", opt.get());
-        return ResponseEntity.ok(opt.get());
-      }
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-	}
-
-  
 
   @Transactional
   @PostMapping("/signup")
@@ -74,11 +54,6 @@ public class UserController {
     User savedUser = userRepository.save(user);
     System.out.println("Saved User SN: " + savedUser.getUserSn());
     return userRepository.save(user);
-  }
-
-  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
-  public boolean checkNickname(@RequestParam String nickname) {
-    return !userRepository.existsByUserNickname(nickname);
   }
 
   @Transactional
@@ -159,15 +134,13 @@ public class UserController {
     response.sendRedirect("http://localhost:5173/");
   }
 
-
-
-  //회원 탈퇴
+  // 회원 탈퇴
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
-     User userInfo = (User) session.getAttribute("user_info");
+    User userInfo = (User) session.getAttribute("user_info");
 
     if (userInfo == null) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
     }
     int id = userInfo.getUserSn();
     userRepository.deleteById(id);
