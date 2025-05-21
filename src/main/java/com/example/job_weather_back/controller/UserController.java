@@ -37,9 +37,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
-  private final KakaoService kakaoService;
-  @Autowired
-  UserRepository userRepository;
+
+    private final KakaoService kakaoService;
+    @Autowired UserRepository userRepository;
+
 
   @Transactional
   @PostMapping("/signup")
@@ -95,8 +96,7 @@ public class UserController {
     return "https://kauth.kakao.com/oauth/authorize"
         + "?response_type=code"
         + "&client_id=" + client_id
-        + "&redirect_uri=" + redirect_uri
-        + "&prompt=login";
+        + "&redirect_uri=" + redirect_uri;
   }
 
   // kako사용자 정보 반환, 로그인 회원가입
@@ -117,6 +117,8 @@ public class UserController {
     User user;
     if (opt.isPresent()) {
       user = opt.get();
+      session.setAttribute("user_info", user);
+      session.setAttribute("access_token", accessToken);
     } else {
 
       user = new User();
@@ -129,6 +131,7 @@ public class UserController {
       userRepository.save(user);
       User savedUser = userRepository.save(user);
       session.setAttribute("user_info", savedUser);
+      session.setAttribute("access_token", accessToken);
     }
 
     response.sendRedirect("http://localhost:5173/");
@@ -137,16 +140,36 @@ public class UserController {
   // 회원 탈퇴
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
-    User userInfo = (User) session.getAttribute("user_info");
+
+     User userInfo = (User) session.getAttribute("user_info");
+   
+     String accessToken = (String) session.getAttribute("access_token");
+     if (accessToken != null) {
+         kakaoService.kakaoDelete(accessToken);
+     }
 
     if (userInfo == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
     }
+    
+
     int id = userInfo.getUserSn();
     userRepository.deleteById(id);
     session.invalidate();
 
     return ResponseEntity.ok("탈퇴 완료");
   }
+
+  @PostMapping("/logout")
+  public void logout(HttpSession session, HttpServletResponse response) throws IOException{
+    String accessToken = (String) session.getAttribute("access_token");
+    if (accessToken != null) {
+        kakaoService.kakaoLogout(accessToken);
+    }
+
+    session.invalidate();
+    response.sendRedirect("http://localhost:5173/");
+}
+
 
 }
