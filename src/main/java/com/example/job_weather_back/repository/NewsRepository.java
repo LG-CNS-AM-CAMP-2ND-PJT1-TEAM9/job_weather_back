@@ -16,4 +16,7 @@ public interface NewsRepository extends JpaRepository<News, Integer> {
     
     // 모든 뉴스를 날짜순으로 반환
     List<News> findAllByOrderByNewsDateTimeDesc();
+
+    // 좋아요한 뉴스 출력
+    List<News> findByNewsSn(int newsSn);
 } 
