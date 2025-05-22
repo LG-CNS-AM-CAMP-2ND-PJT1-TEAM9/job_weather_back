@@ -1,68 +1,45 @@
 package com.example.job_weather_back.service;
 
-import com.example.job_weather_back.entity.News;
 import com.example.job_weather_back.entity.NewContents;
-import com.example.job_weather_back.repository.NewsRepository;
+import com.example.job_weather_back.entity.News;
 import com.example.job_weather_back.repository.NewContentsRepository;
+import com.example.job_weather_back.repository.NewsRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class NewsTransferService {
-    private final NewsRepository newsRepository;
+    private final NewsRepository newsRepository;  // News 테이블 접근용
     private final NewContentsRepository newContentsRepository;
 
     @Transactional
     public void transferNewsToNewContents() {
-        try {
-            log.info("뉴스 컨텐츠 전송 시작");
-            List<News> allNews = newsRepository.findAllByOrderByNewsDateTimeDesc();
-            log.info("전송할 뉴스 총 개수: {}", allNews.size());
+        // 1. News 테이블에서 모든 뉴스를 가져옴
+        List<News> allNews = newsRepository.findAll();
 
-            if (allNews.isEmpty()) {
-                log.info("전송할 뉴스가 없습니다.");
-                return;
-            }
+        // 2. News를 NewContents로 변환하여 저장
+        List<NewContents> newContentsList = allNews.stream()
+                .map(this::convertNewsToNewContents)
+                .collect(Collectors.toList());
 
-            // 청크 단위로 처리
-            int chunkSize = 1000;
-
-            for (int i = 0; i < allNews.size(); i += chunkSize) {
-                int end = Math.min(i + chunkSize, allNews.size());
-                List<News> newsChunk = allNews.subList(i, end);
-
-                List<NewContents> newContentsList = newsChunk.stream()
-                        .map(this::convertNewsToNewContents)
-                        .collect(Collectors.toList());
-
-                newContentsRepository.saveAll(newContentsList);
-
-                int processedCount = i + newsChunk.size();
-                int percentage = processedCount * 100 / allNews.size();
-                log.info("전송 진행률: {}% ({}/{})",
-                        percentage, processedCount, allNews.size());
-            }
-
-            log.info("뉴스 컨텐츠 전송 완료. 총 처리된 뉴스 수: {}", allNews.size());
-        } catch (Exception e) {
-            log.error("뉴스 컨텐츠 전송 중 오류 발생: ", e);
-            throw e;
-        }
+        // 3. 새로운 컨텐츠 저장
+        newContentsRepository.saveAll(newContentsList);
     }
 
     private NewContents convertNewsToNewContents(News news) {
-        NewContents newContents = new NewContents();
-        newContents.setType("NEWS");
-        newContents.setTitle(news.getNewsTitle());
-        newContents.setContent(news.getNewsDescription());
-        newContents.setCreatedAt(news.getNewsDateTime());
-        return newContents;
+        return NewContents.builder()
+                .type("NEWS")  // 뉴스 타입 지정
+                .content(news.getNewsDescription())  // 뉴스 내용
+                .title(news.getNewsTitle())  // 뉴스 제목
+                .link(news.getNewsLink())  // 뉴스 링크
+//                .originalLink(news.getNewsOriginallink())  // 원본 링크
+                .createdAt(news.getNewsDateTime())  // 생성 시간
+                .build();
     }
 }
