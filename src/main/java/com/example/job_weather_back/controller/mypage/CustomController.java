@@ -43,7 +43,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 @Tag(name = "User Customization API (Mypage)", description = "마이페이지 - 사용자 맞춤 설정(관심사) 관련 API")
-@CrossOrigin
 @RestController
 public class CustomController {
     @Autowired CustomizationRepository customizationRepository;

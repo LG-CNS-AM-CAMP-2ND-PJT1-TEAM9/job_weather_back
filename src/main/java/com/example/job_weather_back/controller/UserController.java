@@ -37,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "User API", description = "사용자 인증, 관리 및 소셜 로그인 관련 API")
-@CrossOrigin
 @Slf4j
 @RestController
 @RequiredArgsConstructor

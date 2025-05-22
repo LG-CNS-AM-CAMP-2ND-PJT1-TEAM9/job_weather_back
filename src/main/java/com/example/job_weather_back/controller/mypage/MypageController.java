@@ -18,7 +18,6 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Tag(name = "Mypage API", description = "마이페이지 관련 기본 API (예: 로그인 상태 확인)")
-@CrossOrigin
 @RestController
 public class MypageController {
 

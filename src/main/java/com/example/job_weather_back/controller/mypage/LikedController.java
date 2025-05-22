@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 
 @Tag(name = "Liked Content API (Mypage)", description = "마이페이지 - 사용자가 찜한 뉴스 및 채용공고 관리 API")
-@CrossOrigin
 @RestController
 public class LikedController {
     @Autowired LikedNewsRepository likedNewsRepository;
