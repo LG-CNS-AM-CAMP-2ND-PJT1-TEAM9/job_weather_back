@@ -133,6 +133,9 @@ public class UserController {
   @Value("${kakao.redirect_uri}")
   private String redirect_uri;
 
+  @Value("${frontend.redirect.url}")
+  private String frontendRedirectUrl;
+
   // kakao 로그인 url
   @Operation(summary = "카카오 로그인 URL 요청", description = "카카오 인증을 위한 인가 코드 요청 URL을 반환합니다. 클라이언트는 이 URL로 리다이렉트해야 합니다.")
   @ApiResponses(value = {
@@ -187,7 +190,7 @@ public class UserController {
       session.setAttribute("access_token", accessToken);
     }
 
-    response.sendRedirect("http://localhost:5173/");
+    response.sendRedirect(frontendRedirectUrl);
   }
 
   // 회원 탈퇴
@@ -254,7 +257,7 @@ public class UserController {
     }
 
     session.invalidate();
-    response.sendRedirect("http://localhost:5173/");
+    response.sendRedirect(frontendRedirectUrl);
   }
 
   @Value("${naver.client_id}")
@@ -321,7 +324,7 @@ public class UserController {
 
     }
 
-    response.sendRedirect("http://localhost:5173/");
+    response.sendRedirect(frontendRedirectUrl);
   }
 
 }
