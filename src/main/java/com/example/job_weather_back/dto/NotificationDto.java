@@ -18,6 +18,7 @@ public class NotificationDto {
     private String type;
 
     private Boolean isRead;
+    private String link;
 
     public NotificationDto(Notification notification) {
         this.notificationsId = notification.getNotificationsId();
@@ -25,5 +26,6 @@ public class NotificationDto {
         this.content = notification.getNewContents().getContent();
         this.type = notification.getNewContents().getType();
         this.isRead = notification.getIsRead();
+        this.link = notification.getNewContents().getLink();
     }
 }

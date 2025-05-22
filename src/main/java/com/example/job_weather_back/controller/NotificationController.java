@@ -5,6 +5,7 @@ import com.example.job_weather_back.entity.Notification;
 import com.example.job_weather_back.entity.User;
 import com.example.job_weather_back.repository.NotificationRepository;
 import com.example.job_weather_back.repository.UserRepository;
+import com.example.job_weather_back.service.NewsTransferService;
 import com.example.job_weather_back.service.UserMatchService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class NotificationController {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final UserMatchService userMatchService;
+    private final NewsTransferService newsTransferService;
 
     // 모든 알림 조회
     @GetMapping
@@ -38,6 +40,8 @@ public class NotificationController {
 
     @PostMapping("/user-matching")
     public List<NotificationDto> getNotificationList(@RequestBody User requestedUser, HttpSession session) {
+        newsTransferService.transferNewsToNewContents();
+
         User sessionUser = (User) session.getAttribute("user_info");
         // session에 저장되어 있는 사용자와 실제 넘어온 사용자가 다른 경우
         if (sessionUser == null || requestedUser.getUserSn() != sessionUser.getUserSn()) {
@@ -54,4 +58,17 @@ public class NotificationController {
         return matchingUsers.stream().map(NotificationDto::new).toList();
     }
 
+    @PostMapping("/update")
+    public void updateNotification(@RequestBody Notification notification) {
+        notificationRepository.save(notification);
+    }
+
+    @GetMapping("/isLogin")
+    public User isLogin(HttpSession session) {
+        User sessionUser = (User) session.getAttribute("user_info");
+        if (sessionUser == null) {
+            return null;
+        }
+        return sessionUser;
+    }
 }

@@ -3,8 +3,7 @@
 package com.example.job_weather_back.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +11,9 @@ import java.time.LocalDateTime;
 @Table(name = "new_contents")
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class NewContents {
 
     @Id
@@ -27,4 +29,9 @@ public class NewContents {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    private String link;
+
+    @Column(name = "original_link")
+    private String originalLink;
 }
