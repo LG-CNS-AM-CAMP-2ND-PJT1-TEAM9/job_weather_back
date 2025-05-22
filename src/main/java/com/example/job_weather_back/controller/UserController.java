@@ -17,6 +17,8 @@ import com.example.job_weather_back.dto.LogInDto;
 import com.example.job_weather_back.dto.NaverDto;
 import com.example.job_weather_back.dto.SignUpDto;
 import com.example.job_weather_back.entity.User;
+import com.example.job_weather_back.repository.CustomizationRepository;
+import com.example.job_weather_back.repository.LikedNewsRepository;
 import com.example.job_weather_back.repository.UserRepository;
 import com.example.job_weather_back.service.KakaoService;
 import com.example.job_weather_back.service.NaverService;
@@ -40,15 +42,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RequestMapping("/users")
 public class UserController {
 
-    private final KakaoService kakaoService;
-    private final NaverService naverService;
-    @Autowired UserRepository userRepository;
-
+  private final KakaoService kakaoService;
+  private final NaverService naverService;
+  @Autowired
+  UserRepository userRepository;
+  @Autowired
+  CustomizationRepository customizationRepository;
+  @Autowired
+  LikedNewsRepository likedNewsRepository;
 
   @Transactional
   @PostMapping("/signup")
-  public User signupPost(
-      @RequestBody SignUpDto dto) {
+  public User signupPost(@RequestBody SignUpDto dto) {
     User user = new User();
     user.setUserName(dto.getName());
     user.setUserNickname(dto.getNickname());
@@ -59,7 +64,6 @@ public class UserController {
     System.out.println("Saved User SN: " + savedUser.getUserSn());
     return userRepository.save(user);
   }
-
 
   @Transactional
   @PostMapping("/login")
@@ -72,6 +76,10 @@ public class UserController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
 
+  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
+  public boolean checkNickname(@RequestParam String nickname) {
+    return !userRepository.existsByUserNickname(nickname);
+  }
 
   @Transactional
   @PostMapping("/reset-password")
@@ -143,22 +151,32 @@ public class UserController {
   }
 
   // 회원 탈퇴
+  @Transactional
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
-
-     User userInfo = (User) session.getAttribute("user_info");
-   
-     String accessToken = (String) session.getAttribute("access_token");
-     if (accessToken != null) {
-         kakaoService.kakaoDelete(accessToken);
-     }
+    User userInfo = (User) session.getAttribute("user_info");
 
     if (userInfo == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 되어있지 않습니다.");
     }
-    
+
+    String accessToken = (String) session.getAttribute("access_token");
+    String socialType = userInfo.getUserSocialId();
+
+    if (accessToken != null) {
+      switch (socialType) {
+        case "1": // 카카오
+          kakaoService.kakaoDelete(accessToken);
+          break;
+        case "2": // 네이버
+          naverService.naverDelete(accessToken);
+          break;
+      }
+    }
 
     int id = userInfo.getUserSn();
+    likedNewsRepository.deleteByUser(userInfo);
+    customizationRepository.deleteByUser(userInfo);
     userRepository.deleteById(id);
     session.invalidate();
 
@@ -166,18 +184,30 @@ public class UserController {
   }
 
   @PostMapping("/logout")
-  public void logout(HttpSession session, HttpServletResponse response) throws IOException{
+  public void logout(HttpSession session, HttpServletResponse response) throws IOException {
     String accessToken = (String) session.getAttribute("access_token");
-    if (accessToken != null) {
-        kakaoService.kakaoLogout(accessToken);
+    User userInfo = (User) session.getAttribute("user_info");
+
+    if (accessToken != null && userInfo != null) {
+      String socialType = userInfo.getUserSocialId();
+
+      switch (socialType) {
+        case "1": // 카카오
+          kakaoService.kakaoLogout(accessToken);
+          break;
+        case "2": // 네이버
+          response.sendRedirect("https://nid.naver.com/nidlogin.logout");
+          return;
+        default:
+          break;
+      }
     }
 
     session.invalidate();
     response.sendRedirect("http://localhost:5173/");
-}
+  }
 
-
- @Value("${naver.client_id}")
+  @Value("${naver.client_id}")
   private String naver_client_id;
 
   @Value("${naver.redirect_uri}")
@@ -197,7 +227,7 @@ public class UserController {
         + "&state=" + naver_client_secret;
   }
 
-  //naverlogin
+  // naverlogin
   @GetMapping("/naver-login")
   public void naverCallback(@RequestParam String code, HttpServletResponse response, HttpSession session)
       throws IOException {
@@ -229,7 +259,7 @@ public class UserController {
       User savedUser = userRepository.save(user);
       session.setAttribute("user_info", savedUser);
       session.setAttribute("access_token", accessToken);
-      
+
     }
 
     response.sendRedirect("http://localhost:5173/");
