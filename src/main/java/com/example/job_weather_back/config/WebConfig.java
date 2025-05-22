@@ -13,7 +13,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/**")  
                 .allowedOrigins(
                     "http://localhost:5173",
-                    "https://good-job-today.netlify.app"
+                    "https://good-job-today.netlify.app",
+                    "http://ec2-3-35-169-97.ap-northeast-2.compute.amazonaws.com",
+                    "https://web-job-weather-front-maz1o5u082e9fc0a.sel4.cloudtype.app"
                     )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
