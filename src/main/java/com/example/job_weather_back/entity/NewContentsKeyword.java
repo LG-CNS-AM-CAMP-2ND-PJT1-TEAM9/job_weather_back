@@ -17,8 +17,9 @@ public class NewContentsKeyword {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "new_contents_id", nullable = false)
+    @JoinColumn(name = "new_contents_id")
     private NewContents newContents;
+
 
     @Column(length = 100, nullable = false)
     private String keyword;

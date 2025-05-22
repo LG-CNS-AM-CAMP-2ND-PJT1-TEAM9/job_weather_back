@@ -11,7 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,13 +69,13 @@ public class UserMatchService {
             notification.setNewContents(content);
             notification.setUser(user);
             notification.setIsRead(Boolean.FALSE);
+            notification.setCreatedAt(LocalDateTime.now());
 
             notificationRepository.save(notification);
             newNotifications.add(notification);
         }
 
         // 5. 모든 알림 반환 (기존 + 새로 생성된 알림)
-        List<Notification> allNotifications = notificationRepository.findAllWithRelations(user.getUserSn());
-        return allNotifications;
+        return notificationRepository.findAllWithRelations(user.getUserSn());
     }
 }
