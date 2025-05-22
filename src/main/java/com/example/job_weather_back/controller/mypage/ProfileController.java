@@ -11,6 +11,14 @@ import com.example.job_weather_back.dto.ProfileDTO;
 import com.example.job_weather_back.entity.User;
 import com.example.job_weather_back.repository.UserRepository;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -19,12 +27,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
-@CrossOrigin
+@Tag(name = "User Profile API (Mypage)", description = "마이페이지 - 사용자 프로필 정보 조회 및 수정, 비밀번호 확인 API")
 @RestController
 public class ProfileController {
     @Autowired UserRepository userRepository;
 
     // 회원정보 조회
+    @Operation(summary = "회원정보 조회", description = "현재 로그인된 사용자의 프로필 정보를 반환합니다. (회원정보 수정을 위한 이전 데이터 조회용)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자 정보를 찾을 수 없음", content = @Content)
+    })
     @GetMapping("/mypage/profile")
     public User printProfile(HttpSession session) {
         User user = (User) session.getAttribute("user_info");
@@ -37,6 +52,14 @@ public class ProfileController {
     }
     
     //회원정보 수정
+    @Operation(summary = "회원정보 수정", description = "현재 로그인된 사용자의 프로필 정보를 전달받은 내용으로 수정합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "수정 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(example = "{\"message\": \"Update successfully\"}"))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (예: 중복된 닉네임)", content = @Content),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음", content = @Content)
+    })
     @PostMapping("/mypage/profile")
     public ResponseEntity<String> updateProfile(
         @RequestBody ProfileDTO profileDTO,
@@ -67,6 +90,14 @@ public class ProfileController {
     }
     
     //비밀번호 확인
+    @Operation(summary = "비밀번호 확인", description = "현재 로그인된 사용자의 비밀번호가 입력된 비밀번호와 일치하는지 확인합니다. (주로 회원 탈퇴 전 확인용)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "비밀번호 일치",
+                         content = @Content(mediaType = "application/json", schema = @Schema(example = "{\"success\": true}"))),
+            @ApiResponse(responseCode = "400", description = "비밀번호 불일치 또는 잘못된 요청",
+                         content = @Content(mediaType = "application/json", schema = @Schema(example = "{\"success\": false, \"message\": \"비밀번호 불일치\"}"))),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content)
+    })
     @PostMapping("/mypage/profile/checkPw")
     public ResponseEntity<?> checkPw(
         @RequestBody Map<String,String> body,

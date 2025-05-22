@@ -8,9 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 import com.example.job_weather_back.dto.KakaoDto;
 import com.example.job_weather_back.dto.LogInDto;
@@ -23,19 +20,23 @@ import com.example.job_weather_back.repository.UserRepository;
 import com.example.job_weather_back.service.KakaoService;
 import com.example.job_weather_back.service.NaverService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+//import io.swagger.v3.oas.annotations.parameters.RequestBody;//
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin
+@Tag(name = "User API", description = "사용자 인증, 관리 및 소셜 로그인 관련 API")
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -51,6 +52,12 @@ public class UserController {
   @Autowired
   LikedNewsRepository likedNewsRepository;
 
+  @Operation(summary = "회원가입", description = "새로운 사용자를 등록합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "회원가입 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터", content = @Content)
+    })
   @Transactional
   @PostMapping("/signup")
   public User signupPost(@RequestBody SignUpDto dto) {
@@ -65,6 +72,13 @@ public class UserController {
     return userRepository.save(user);
   }
 
+
+  @Operation(summary = "로그인", description = "이메일과 비밀번호를 사용하여 로그인하고 세션을 생성합니다.")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "로그인 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 (이메일 또는 비밀번호 불일치)", content = @Content)
+  })
   @Transactional
   @PostMapping("/login")
   public ResponseEntity<User> loginPost(@RequestBody LogInDto dto, HttpSession session) {
@@ -76,11 +90,22 @@ public class UserController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
 
+  @Operation(summary = "닉네임 중복 확인", description = "제공된 닉네임의 사용 가능 여부를 확인합니다. (true: 사용 가능, false: 이미 사용 중)")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "확인 결과 반환",
+                         content = @Content(mediaType = "application/json", schema = @Schema(type = "boolean")))
+  })
   @GetMapping("/nickname") // 닉네임 존재 여부 찾기
   public boolean checkNickname(@RequestParam String nickname) {
     return !userRepository.existsByUserNickname(nickname);
   }
 
+  @Operation(summary = "비밀번호 재설정", description = "이메일 확인 후 새 비밀번호로 변경합니다. (현재 로직은 이메일만으로 사용자를 찾아 비밀번호를 변경합니다. 실제 구현 시 추가 인증 필요)")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "비밀번호 재설정 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "404", description = "해당 이메일의 사용자 없음", content = @Content)
+  })
   @Transactional
   @PostMapping("/reset-password")
   public ResponseEntity<User> resetPwPost(@RequestBody LogInDto dto) {
@@ -91,6 +116,11 @@ public class UserController {
     return ResponseEntity.ok(user);
   }
 
+  @Operation(summary = "이메일 가입 여부 확인", description = "제공된 이메일이 이미 가입되어 있는지 확인합니다. (true: 이미 가입됨, false: 가입되지 않음)")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "확인 결과 반환",
+                         content = @Content(mediaType = "application/json", schema = @Schema(type = "boolean")))
+  })
   @GetMapping("/email") // 가입된 이메일 찾기
   public boolean checkemail(@RequestParam String email) {
     return userRepository.existsByEmail(email);
@@ -103,6 +133,11 @@ public class UserController {
   private String redirect_uri;
 
   // kakao 로그인 url
+  @Operation(summary = "카카오 로그인 URL 요청", description = "카카오 인증을 위한 인가 코드 요청 URL을 반환합니다. 클라이언트는 이 URL로 리다이렉트해야 합니다.")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "카카오 로그인 URL 문자열",
+                         content = @Content(mediaType = "text/plain", schema = @Schema(type = "string", example = "https://kauth.kakao.com/oauth/authorize?...")))
+  })
   @GetMapping("/kakaologin")
   public String getKakaoLoginUrl() {
 
@@ -113,6 +148,10 @@ public class UserController {
   }
 
   // kako사용자 정보 반환, 로그인 회원가입
+  @Operation(summary = "카카오 로그인 콜백 처리 (GET)", description = "카카오로부터 인가 코드를 받아 로그인/회원가입 처리 후 메인 페이지로 리다이렉트합니다. (API 명세 테스트 어려움)")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "302", description = "메인 페이지(http://localhost:5173/)로 리다이렉트")
+  })
   @GetMapping("/social-login")
   public void kakaoCallback(@RequestParam String code, HttpServletResponse response, HttpSession session)
       throws IOException {
@@ -151,6 +190,11 @@ public class UserController {
   }
 
   // 회원 탈퇴
+  @Operation(summary = "회원 탈퇴", description = "현재 로그인된 사용자의 정보를 삭제하고 세션을 무효화합니다. 소셜 로그인 사용자의 경우 연결 끊기를 시도합니다.")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "탈퇴 성공", content = @Content(mediaType = "text/plain")),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content)
+  })
   @Transactional
   @DeleteMapping("/delete")
   public ResponseEntity<?> deleteUser(HttpSession session) {
@@ -183,6 +227,11 @@ public class UserController {
     return ResponseEntity.ok("탈퇴 완료");
   }
 
+
+  @Operation(summary = "로그아웃", description = "현재 로그인된 사용자의 세션을 무효화하고, 소셜 로그인 사용자의 경우 로그아웃 처리 후 메인 페이지로 리다이렉트합니다.")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "302", description = "메인 페이지 또는 소셜 로그아웃 페이지로 리다이렉트")
+  })
   @PostMapping("/logout")
   public void logout(HttpSession session, HttpServletResponse response) throws IOException {
     String accessToken = (String) session.getAttribute("access_token");
@@ -217,6 +266,11 @@ public class UserController {
   private String naver_client_secret;
 
   // naver 로그인 url
+  @Operation(summary = "네이버 로그인 URL 요청", description = "네이버 인증을 위한 인가 코드 요청 URL을 반환합니다. 클라이언트는 이 URL로 리다이렉트해야 합니다.")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "네이버 로그인 URL 문자열",
+                         content = @Content(mediaType = "text/plain", schema = @Schema(type = "string", example = "https://nid.naver.com/oauth2.0/authorize?...")))
+  })
   @GetMapping("/naverlogin")
   public String getNaverLoginUrl() {
 
@@ -228,6 +282,10 @@ public class UserController {
   }
 
   // naverlogin
+  @Operation(summary = "네이버 로그인 콜백 처리 (GET)", description = "네이버로부터 인가 코드를 받아 로그인/회원가입 처리 후 메인 페이지로 리다이렉트합니다. (API 명세 테스트 어려움)")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "302", description = "메인 페이지(http://localhost:5173/)로 리다이렉트")
+  })
   @GetMapping("/naver-login")
   public void naverCallback(@RequestParam String code, HttpServletResponse response, HttpSession session)
       throws IOException {
