@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 @Tag(name = "Main Page API", description = "메인 페이지 추천 및 날씨 관련 API") // 태그명 수정
 @RestController
 @RequestMapping("/api/main/recommendations") // 이 컨트롤러는 추천 관련이므로 경로 유지
-@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class RecommendationController { // 클래스명도 RecommendationController로 변경하는 것이 좋음
 
     private static final Logger log = LoggerFactory.getLogger(RecommendationController.class);

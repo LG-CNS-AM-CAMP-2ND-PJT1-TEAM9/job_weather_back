@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Tag(name = "Liked Employment API", description = "찜한 채용공고 관리 API")
-@CrossOrigin
 @Slf4j
 @RestController
 @RequiredArgsConstructor

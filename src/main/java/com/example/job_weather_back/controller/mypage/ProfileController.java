@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 @Tag(name = "User Profile API (Mypage)", description = "마이페이지 - 사용자 프로필 정보 조회 및 수정, 비밀번호 확인 API")
-@CrossOrigin
 @RestController
 public class ProfileController {
     @Autowired UserRepository userRepository;

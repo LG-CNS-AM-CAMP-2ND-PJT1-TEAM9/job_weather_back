@@ -44,7 +44,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "News API", description = "뉴스 조회, 검색 및 찜하기 관련 API")
 @RestController
 @RequestMapping("/news")
-@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class NewsController {
 
     @Autowired
