@@ -47,8 +47,7 @@ public class UserController {
 
   @Transactional
   @PostMapping("/signup")
-  public User signupPost(
-      @RequestBody SignUpDto dto) {
+  public User signupPost(@RequestBody SignUpDto dto) {
     User user = new User();
     user.setUserName(dto.getName());
     user.setUserNickname(dto.getNickname());
@@ -72,6 +71,10 @@ public class UserController {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
   }
 
+  @GetMapping("/nickname") // 닉네임 존재 여부 찾기
+  public boolean checkNickname(@RequestParam String nickname) {
+    return !userRepository.existsByUserNickname(nickname);
+  }
 
   @Transactional
   @PostMapping("/reset-password")
