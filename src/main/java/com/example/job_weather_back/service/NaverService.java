@@ -88,4 +88,29 @@ public class NaverService {
         }
     }
 
+    // 탈퇴
+    public void naverDelete(String accessToken) {
+        String url = "https://nid.naver.com/oauth2.0/token";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("grant_type", "delete");
+        params.add("client_id", naver_client_id);
+        params.add("client_secret", naver_client_secret);
+        params.add("access_token", accessToken);
+        params.add("service_provider", "NAVER");
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println("네이버 연결 해제 응답: " + response.getBody());
+        } catch (Exception e) {
+            System.err.println("네이버 연결 해제 실패: " + e.getMessage());
+        }
+    }
+
 }
