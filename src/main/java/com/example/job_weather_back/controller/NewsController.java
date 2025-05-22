@@ -31,9 +31,19 @@ import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.Optional;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+// import io.swagger.v3.oas.annotations.parameters.RequestBody; // Spring의 RequestBody와 이름이 같으므로, 사용할 때 정규화된 이름 사용
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+
+@Tag(name = "News API", description = "뉴스 조회, 검색 및 찜하기 관련 API")
 @RestController
 @RequestMapping("/news")
-@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class NewsController {
 
     @Autowired
@@ -57,6 +67,14 @@ public class NewsController {
     );
 
     // 프론트의 뉴스 검색 응답
+    @Operation(summary = "뉴스 목록 조회 또는 검색", description = "검색어(search) 유무에 따라 전체 최신 뉴스 목록 또는 검색 결과를 반환합니다. 검색어가 없으면 모든 뉴스를 최신순으로 반환합니다.")
+    @ApiResponses(value = {
+            // 응답 스키마를 Map 또는 Object로 변경
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                         content = @Content(mediaType = "application/json",
+                                 schema = @Schema(type = "object", example = "{\"items\": [{\"newsSn\":1, ...}], \"total\": 1}"))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content)
+    })
     @GetMapping
     public ResponseEntity<?> getNews(@RequestParam(required = false) String search) {
         try {
@@ -205,6 +223,12 @@ public class NewsController {
     }
 
     // 찜한 뉴스 목록 조회
+    @Operation(summary = "찜한 뉴스 ID 목록 조회", description = "현재 로그인된 사용자가 찜한 뉴스의 ID 목록을 반환합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                         content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = Integer.class))),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content)
+    })
     @GetMapping("/liked")
     public ResponseEntity<?> getLikedNews(@SessionAttribute("user_info") User user) {
         List<LikedNews> likedNewsList = likedNewsRepository.findByUserUserSn(user.getUserSn());
@@ -216,6 +240,12 @@ public class NewsController {
     }
 
     // 뉴스 찜하기/찜하기 취소
+    @Operation(summary = "뉴스 찜하기/찜 취소 (토글)", description = "특정 뉴스를 찜하거나 찜 목록에서 제거합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "찜하기/찜 취소 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 (예: 뉴스 ID 누락 또는 존재하지 않는 뉴스)", content = @Content),
+            @ApiResponse(responseCode = "401", description = "로그인 필요 (인증되지 않음)", content = @Content)
+    })
     @PostMapping("/like")
     public ResponseEntity<?> toggleLike(
             @RequestBody Map<String, Integer> body,
