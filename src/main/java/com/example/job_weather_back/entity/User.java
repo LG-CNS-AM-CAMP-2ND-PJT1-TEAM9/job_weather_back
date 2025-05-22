@@ -22,13 +22,13 @@ public class User implements Serializable {
     @Column(name = "user_name", nullable = false, length = 20)
     private String userName;
 
-    @Column(name = "user_pw",  nullable = false, length = 20)
+    @Column(name = "user_pw",  nullable = false, length = 255)
     private String userPw;
 
     @Column(name = "user_phone", length = 20)
     private String userPhone;
 
-    @Column(length = 20,  nullable = false)
+    @Column(length = 30,  nullable = false)
     private String email;
 
     @Column(name = "user_nickname", nullable = false, length = 20)
