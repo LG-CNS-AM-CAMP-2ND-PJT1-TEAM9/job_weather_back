@@ -2,19 +2,12 @@ package com.example.job_weather_back.service;
 
 import com.example.job_weather_back.dto.NewsDto;
 import com.example.job_weather_back.dto.MainPageRecommendationsDto;
-import com.example.job_weather_back.entity.CompanyType;
-import com.example.job_weather_back.entity.CustomLocation;
-import com.example.job_weather_back.entity.CustomPosition;
-import com.example.job_weather_back.entity.News;
-import com.example.job_weather_back.entity.UserRecommendation;
-import com.example.job_weather_back.repository.NewsRepository;
-import com.example.job_weather_back.repository.UserRecommendationRepository;
-import com.example.job_weather_back.repository.CompanyTypeRepository;
-import com.example.job_weather_back.repository.CustomPositionRepository;
-import com.example.job_weather_back.repository.CustomLocationRepository;
+import com.example.job_weather_back.entity.*; // User, CompanyType, Customization 등 엔티티 import
+import com.example.job_weather_back.repository.*; // 모든 필요한 Repository import
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-// import org.springframework.scheduling.annotation.Scheduled; // 스케줄러 어노테이션 제거
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,30 +28,22 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class RecommendationService {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendationService.class);
-    private static final Integer GENERAL_USER_SN = 0;
-    private static final int MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE = 8; // 이전 값 유지
+    private static final int MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE = 3;
 
     private final UserRecommendationRepository userRecommendationRepository;
     private final NewsRepository newsRepository;
-
+    private final CustomizationRepository customizationRepository;
     private final CompanyTypeRepository companyTypeRepository;
     private final CustomPositionRepository customPositionRepository;
     private final CustomLocationRepository customLocationRepository;
+    // private final UserRepository userRepository; // UserRepository가 있다면 주입
 
     @Value("${naver.news.client-id}")
     private String naverClientId;
@@ -73,22 +58,26 @@ public class RecommendationService {
     @Autowired
     public RecommendationService(UserRecommendationRepository userRecommendationRepository,
                                  NewsRepository newsRepository,
+                                 CustomizationRepository customizationRepository, // 주입 추가
                                  CompanyTypeRepository companyTypeRepository,
                                  CustomPositionRepository customPositionRepository,
-                                 CustomLocationRepository customLocationRepository) {
+                                 CustomLocationRepository customLocationRepository
+                                 /* UserRepository userRepository */) { // UserRepository 주입
         this.userRecommendationRepository = userRecommendationRepository;
         this.newsRepository = newsRepository;
+        this.customizationRepository = customizationRepository;
         this.companyTypeRepository = companyTypeRepository;
         this.customPositionRepository = customPositionRepository;
         this.customLocationRepository = customLocationRepository;
+        // this.userRepository = userRepository;
     }
 
+    // ... fetchAndSaveNewsFromNaverApi() 와 getAugmentedKeywordsForNewsSearch()는 이전과 동일 ...
     @Transactional
-    // @Scheduled(cron = "0 0/30 * * * ?") // 스케줄러 제거
-    public void fetchAndSaveNewsFromNaverApi() { // 이제 public으로 유지 (Controller에서 호출 가능하도록)
-        // ... (메소드 내용은 이전과 동일) ...
+    @Scheduled(cron = "0 0/30 * * * ?")
+    public void fetchAndSaveNewsFromNaverApi() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        log.info("추천용 뉴스 수집 시작 (요청 시 실행): {}", LocalDateTime.now().format(formatter));
+        log.info("추천용 뉴스 수집 스케줄링 시작: {}", LocalDateTime.now().format(formatter));
         try {
             List<String> currentKeywords = getAugmentedKeywordsForNewsSearch();
             if (currentKeywords.isEmpty()) {
@@ -105,12 +94,12 @@ public class RecommendationService {
             
             LocalDateTime fetchUntilDate = LocalDateTime.now();
             int totalSavedCount = 0;
-            final int MAX_API_PAGES_TO_FETCH = 1; // 매번 호출되므로 API 호출 페이지 수 최소화 (예: 100개만)
+            final int MAX_API_PAGES_TO_FETCH = 3; 
             int pagesFetched = 0;
 
             log.info("Naver 뉴스 API 검색 시작. 검색어 일부: '{}', 기준일시: {}", searchQuery.substring(0, Math.min(searchQuery.length(), 50)), lastSavedDate);
 
-            for (int start = 1; start <= 100 && pagesFetched < MAX_API_PAGES_TO_FETCH; start += 100) { // 최대 100개만 가져오도록 수정
+            for (int start = 1; start <= 300 && pagesFetched < MAX_API_PAGES_TO_FETCH; start += 100) {
                 pagesFetched++;
                 String urlStr = String.format(
                     "https://openapi.naver.com/v1/search/news.json?query=%s&display=100&sort=date&start=%d",
@@ -118,7 +107,6 @@ public class RecommendationService {
                 
                 URL url = new URL(urlStr);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                // ... (이하 API 호출 로직은 이전과 동일) ...
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("X-Naver-Client-Id", naverClientId);
                 conn.setRequestProperty("X-Naver-Client-Secret", naverClientSecret);
@@ -188,31 +176,17 @@ public class RecommendationService {
                 } 
             }
             log.info("뉴스 수집 완료. 총 {}개의 뉴스 신규 저장.", totalSavedCount);
-
         } catch (Exception e) {
-            log.error("뉴스 수집 중 오류 발생", e); // 로그 메시지 명확화
+            log.error("뉴스 수집 스케줄링 중 오류 발생", e);
         }
     }
 
     private List<String> getAugmentedKeywordsForNewsSearch() {
-        // ... (메소드 내용은 이전과 동일) ...
         Set<String> augmentedKeywords = new HashSet<>(BASE_NEWS_KEYWORDS);
         try {
-            companyTypeRepository.findAll().stream()
-                .map(CompanyType::getTypeName)
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .forEach(augmentedKeywords::add);
-
-            customPositionRepository.findAll().stream()
-                .map(CustomPosition::getPositionName)
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .forEach(augmentedKeywords::add);
-
-            customLocationRepository.findAll().stream()
-                .map(CustomLocation::getLocationName)
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .forEach(augmentedKeywords::add);
-
+            companyTypeRepository.findAll().stream().map(CompanyType::getTypeName).filter(Objects::nonNull).forEach(augmentedKeywords::add);
+            customPositionRepository.findAll().stream().map(CustomPosition::getPositionName).filter(Objects::nonNull).forEach(augmentedKeywords::add);
+            customLocationRepository.findAll().stream().map(CustomLocation::getLocationName).filter(Objects::nonNull).forEach(augmentedKeywords::add);
             log.info("DB에서 추가 키워드 조회 완료. 현재 키워드 개수: {}", augmentedKeywords.size());
         } catch (Exception e) {
             log.error("DB에서 추가 키워드 조회 중 오류 발생", e);
@@ -223,51 +197,134 @@ public class RecommendationService {
         }
         return new ArrayList<>(augmentedKeywords);
     }
-
+    
+    /**
+     * 일반 사용자를 위한 추천 콘텐츠를 주기적으로 생성합니다.
+     */
     @Transactional
-    // @Scheduled(cron = "0 5/30 * * * ?") // 스케줄러 제거
-    public void populateGeneralRecommendations() { // 이제 public으로 유지
-        // ... (메소드 내용은 이전과 동일) ...
-        log.info("일반 사용자({})를 위한 추천 콘텐츠 생성 시작 (요청 시 실행)...", GENERAL_USER_SN);
+    @Scheduled(cron = "0 5/30 * * * ?")
+    public void populateGeneralRecommendations() {
+        log.info("일반 사용자 (user_sn is NULL)를 위한 추천 콘텐츠 생성 시작...");
         userRecommendationRepository.deleteByUserSnIsNullAndContentType(UserRecommendation.ContentType.NEWS);
         log.info("기존 일반 사용자 뉴스 추천 삭제 완료.");
 
         Pageable newsPageable = PageRequest.of(0, MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE, Sort.by(Sort.Direction.DESC, "newsDateTime"));
         List<News> latestNewsForRecommendation = newsRepository.findAll(newsPageable).getContent();
 
-        for (News news : latestNewsForRecommendation) {
-            if (!userRecommendationRepository.existsByUserSnIsNullAndContentTypeAndTargetSn(
-                    UserRecommendation.ContentType.NEWS, news.getNewsSn())) {
+        saveRecommendations(null, latestNewsForRecommendation, UserRecommendation.ContentType.NEWS); // userSn에 null 전달
+        log.info("{}개의 뉴스 추천 저장 완료 (일반 사용자용).", latestNewsForRecommendation.size());
+        log.info("일반 사용자 추천 콘텐츠 생성 완료.");
+    }
+
+    /**
+     * 특정 로그인 사용자를 위한 맞춤형 추천 콘텐츠를 생성합니다.
+     */
+    @Transactional
+    public void populateUserSpecificRecommendations(Integer userSn) { // 파라미터 타입을 Integer로 변경
+        if (userSn == null) {
+            log.warn("populateUserSpecificRecommendations 호출 시 userSn이 null입니다. 일반 추천을 사용해야 합니다.");
+            return;
+        }
+        log.info("{} 사용자를 위한 맞춤 추천 콘텐츠 생성 시작...", userSn);
+
+        userRecommendationRepository.deleteByUserSnAndContentType(userSn, UserRecommendation.ContentType.NEWS);
+        log.info("{} 사용자의 기존 뉴스 추천 삭제 완료.", userSn);
+
+        Set<String> userInterestKeywords = new HashSet<>();
+        // CustomizationRepository의 findByUserUserSn 메소드 사용 (User 엔티티의 PK가 int라고 가정)
+        Optional<Customization> userCustomizationOpt = customizationRepository.findByUserUserSn(userSn);
+
+        if (userCustomizationOpt.isPresent()) {
+            Customization custom = userCustomizationOpt.get();
+            if (custom.getCompanyType() != null && custom.getCompanyType().getTypeName() != null) {
+                userInterestKeywords.add(custom.getCompanyType().getTypeName());
+            }
+            if (custom.getCustomPosition() != null && custom.getCustomPosition().getPositionName() != null) {
+                userInterestKeywords.add(custom.getCustomPosition().getPositionName());
+            }
+            if (custom.getCustomLocation() != null && custom.getCustomLocation().getLocationName() != null) {
+                userInterestKeywords.add(custom.getCustomLocation().getLocationName());
+            }
+        }
+        // (선택적) 찜한 뉴스의 키워드도 추가
+
+        List<News> newsToRecommend;
+        if (userInterestKeywords.isEmpty()) {
+            log.info("{} 사용자가 설정한 관심사가 없어 기본 최신 뉴스로 추천합니다.", userSn);
+            Pageable newsPageable = PageRequest.of(0, MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE, Sort.by(Sort.Direction.DESC, "newsDateTime"));
+            newsToRecommend = newsRepository.findAll(newsPageable).getContent();
+        } else {
+            log.info("{} 사용자의 관심 키워드: {}", userSn, userInterestKeywords);
+            // 임시: 모든 뉴스에서 필터링 (NewsRepository에 키워드 검색 메소드 추가 권장)
+            List<News> allNews = newsRepository.findAll(Sort.by(Sort.Direction.DESC, "newsDateTime"));
+            newsToRecommend = allNews.stream()
+                .filter(news -> userInterestKeywords.stream().anyMatch(keyword ->
+                    (news.getNewsTitle() != null && news.getNewsTitle().toLowerCase().contains(keyword.toLowerCase())) ||
+                    (news.getNewsDescription() != null && news.getNewsDescription().toLowerCase().contains(keyword.toLowerCase()))
+                ))
+                .limit(MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE)
+                .collect(Collectors.toList());
+        }
+        
+        saveRecommendations(userSn, newsToRecommend, UserRecommendation.ContentType.NEWS);
+        log.info("{} 사용자를 위한 맞춤 뉴스 추천 {}건 저장 완료.", userSn, newsToRecommend.size());
+        log.info("{} 사용자 맞춤 추천 콘텐츠 생성 완료.", userSn);
+    }
+
+    private void saveRecommendations(Integer userSn, List<News> newsList, UserRecommendation.ContentType contentType) {
+        for (News news : newsList) {
+            boolean exists;
+            if (userSn == null) {
+                exists = userRecommendationRepository.existsByUserSnIsNullAndContentTypeAndTargetSn(contentType, news.getNewsSn());
+            } else {
+                exists = userRecommendationRepository.existsByUserSnAndContentTypeAndTargetSn(userSn, contentType, news.getNewsSn());
+            }
+
+            if (!exists) {
                 UserRecommendation recommendation = UserRecommendation.builder()
-                        .userSn(null)
-                        .contentType(UserRecommendation.ContentType.NEWS)
+                        .userSn(userSn) // null 또는 실제 userSn
+                        .contentType(contentType)
                         .targetSn(news.getNewsSn())
                         .build();
                 userRecommendationRepository.save(recommendation);
             }
         }
-        log.info("{}개의 뉴스 추천 저장 완료 (일반 사용자용).", latestNewsForRecommendation.size());
-        log.warn("채용공고 추천 로직은 사람인 API 연동 후 구현 예정입니다 (일반 사용자용).");
-        log.info("일반 사용자 추천 콘텐츠 생성 완료.");
     }
 
     @Transactional(readOnly = true)
-    public MainPageRecommendationsDto getRecommendationsForMainPage() {
-        // ... (메소드 내용은 이전과 동일) ...
-        Integer userIdToFetch = null; 
-        boolean isLoggedIn = false; 
-
+    public MainPageRecommendationsDto getRecommendationsForMainPage(HttpSession session) {
         List<UserRecommendation> newsRecs;
-        if (isLoggedIn && userIdToFetch != null) {
+        boolean isLoggedIn = false;
+        Integer userIdToFetch = null; // User 엔티티의 PK 타입이 int이므로 Integer 사용
+
+        User loggedInUser = (User) session.getAttribute("user_info");
+
+        if (loggedInUser != null) {
+            isLoggedIn = true;
+            userIdToFetch = loggedInUser.getUserSn(); // User 엔티티의 PK (int)
+            log.info("로그인한 사용자 ({}) 추천을 가져옵니다.", userIdToFetch);
             newsRecs = userRecommendationRepository.findByUserSnAndContentTypeOrderByIdDesc(
                     userIdToFetch, UserRecommendation.ContentType.NEWS);
+            
+            // 로그인한 사용자의 추천이 없거나 적으면, 일반 추천으로 보강하거나 즉시 생성 시도 (선택적)
+            if (newsRecs.isEmpty()) {
+                log.info("로그인한 사용자 ({})의 맞춤 뉴스가 없습니다. 일반 추천으로 대체하거나, 맞춤 추천 생성을 시도합니다.", userIdToFetch);
+                // populateUserSpecificRecommendations(userIdToFetch); // 즉시 생성은 API 응답 지연 유발 가능
+                // newsRecs = userRecommendationRepository.findByUserSnAndContentTypeOrderByIdDesc(userIdToFetch, UserRecommendation.ContentType.NEWS);
+                // 만약 그래도 없다면 일반 추천으로 대체
+                if (newsRecs.isEmpty()) {
+                    newsRecs = userRecommendationRepository.findByUserSnIsNullAndContentTypeOrderByIdDesc(UserRecommendation.ContentType.NEWS);
+                }
+            }
+
         } else {
+            log.info("비로그인 사용자 (일반) 추천을 가져옵니다.");
             newsRecs = userRecommendationRepository.findByUserSnIsNullAndContentTypeOrderByIdDesc(
                     UserRecommendation.ContentType.NEWS);
         }
-        
+
         List<NewsDto> recommendedNewsDtos = newsRecs.stream()
-                .map(rec -> newsRepository.findById(rec.getTargetSn()))
+                .map(rec -> newsRepository.findById(rec.getTargetSn())) // NewsRepository의 findById 사용
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .map(news -> new NewsDto(
@@ -276,7 +333,7 @@ public class RecommendationService {
                         news.getNewsDescription(),
                         news.getNewsLink(),
                         news.getNewsDateTime()))
-                .limit(MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE)
+                .limit(MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE) // 최종적으로 보여줄 개수 제한
                 .collect(Collectors.toList());
         
         String userTypeForLog = isLoggedIn ? "로그인 사용자 (ID: " + userIdToFetch + ")" : "일반 (userSn is NULL)";
