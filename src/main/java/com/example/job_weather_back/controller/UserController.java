@@ -1,6 +1,8 @@
 package com.example.job_weather_back.controller;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -233,27 +235,49 @@ public class UserController {
             @ApiResponse(responseCode = "302", description = "메인 페이지 또는 소셜 로그아웃 페이지로 리다이렉트")
   })
   @PostMapping("/logout")
-  public void logout(HttpSession session, HttpServletResponse response) throws IOException {
+  public ResponseEntity<String> logout(HttpSession session, HttpServletResponse response) throws IOException {
     String accessToken = (String) session.getAttribute("access_token");
     User userInfo = (User) session.getAttribute("user_info");
+
+    if(userInfo == null) {
+      session.invalidate();
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 상태 아님");
+    }
 
     if (accessToken != null && userInfo != null) {
       String socialType = userInfo.getUserSocialId();
 
-      switch (socialType) {
-        case "1": // 카카오
-          kakaoService.kakaoLogout(accessToken);
-          break;
-        case "2": // 네이버
-          response.sendRedirect("https://nid.naver.com/nidlogin.logout");
-          return;
-        default:
-          break;
+      if("1".equals(socialType)) {
+        try {
+            kakaoService.kakaoLogout(accessToken);
+        } catch (Exception e) {
+            e.printStackTrace(); // 서버 로그에 에러 상세 찍기
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("카카오 로그아웃 처리 중 오류 발생");
+        }
+      } else if("2".equals(socialType)) {
+        session.invalidate();
+          return ResponseEntity.ok("네이버 로그아웃 완료");
       }
+      // switch (socialType) {
+      //   case "1": // 카카오
+      //     try {
+      //       kakaoService.kakaoLogout(accessToken);
+      //   } catch (Exception e) {
+      //       e.printStackTrace(); // 서버 로그에 에러 상세 찍기
+      //       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("카카오 로그아웃 처리 중 오류 발생");
+      //   }
+      //     break;
+      //   case "2": // 네이버
+      //     // response.sendRedirect("https://nid.naver.com/nidlogin.logout");
+      //     session.invalidate();
+      //     return ResponseEntity.ok("네이버 로그아웃 완료");
+      //   default:
+      //     break;
+      // }
     }
 
     session.invalidate();
-    response.sendRedirect("http://localhost:5173/");
+    return ResponseEntity.ok("로그아웃 성공");
   }
 
   @Value("${naver.client_id}")
@@ -322,5 +346,22 @@ public class UserController {
 
     response.sendRedirect("http://localhost:5173/");
   }
+
+  
+    @GetMapping("/info")
+public ResponseEntity<?> getUserInfo(HttpSession session) {
+    Object userObj = session.getAttribute("user_info");
+    if (userObj == null || !(userObj instanceof User)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
+    }
+
+    User user = (User) userObj;
+    String nickname = user.getUserNickname(); // 또는 user.getNickname();
+
+    Map<String, Object> response = new HashMap<>();
+    response.put("nickname", nickname);
+
+    return ResponseEntity.ok(response);
+}
 
 }
