@@ -16,10 +16,7 @@ public class NewContents {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-<<<<<<< HEAD
-=======
     @Column(name = "new_contents_id") // DB 필드명에 맞춤
->>>>>>> b4f1a8eaec03cc7fbaccc36024fc85994059880d
     private Long id;
 
     private String type;
