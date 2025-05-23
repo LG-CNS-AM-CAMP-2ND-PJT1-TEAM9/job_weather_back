@@ -90,7 +90,7 @@ public class UserController {
       return ResponseEntity.ok(opt.get());
     }
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-  }
+	}
 
   @Operation(summary = "닉네임 중복 확인", description = "제공된 닉네임의 사용 가능 여부를 확인합니다. (true: 사용 가능, false: 이미 사용 중)")
   @ApiResponses(value = {
@@ -133,6 +133,9 @@ public class UserController {
 
   @Value("${kakao.redirect_uri}")
   private String redirect_uri;
+
+  @Value("${frontend.redirect.url}")
+  private String frontendRedirectUrl;
 
   // kakao 로그인 url
   @Operation(summary = "카카오 로그인 URL 요청", description = "카카오 인증을 위한 인가 코드 요청 URL을 반환합니다. 클라이언트는 이 URL로 리다이렉트해야 합니다.")
@@ -188,7 +191,7 @@ public class UserController {
       session.setAttribute("access_token", accessToken);
     }
 
-    response.sendRedirect("http://localhost:5173/");
+    response.sendRedirect(frontendRedirectUrl);
   }
 
   // 회원 탈퇴
@@ -275,7 +278,7 @@ public class UserController {
       //     break;
       // }
     }
-
+    
     session.invalidate();
     return ResponseEntity.ok("로그아웃 성공");
   }
@@ -344,24 +347,23 @@ public class UserController {
 
     }
 
-    response.sendRedirect("http://localhost:5173/");
+    response.sendRedirect(frontendRedirectUrl);
   }
 
-  
-    @GetMapping("/info")
-public ResponseEntity<?> getUserInfo(HttpSession session) {
-    Object userObj = session.getAttribute("user_info");
-    if (userObj == null || !(userObj instanceof User)) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
-    }
+  @GetMapping("/info")
+  public ResponseEntity<?> getUserInfo(HttpSession session) {
+      Object userObj = session.getAttribute("user_info");
+      if (userObj == null || !(userObj instanceof User)) {
+          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 필요");
+      }
 
-    User user = (User) userObj;
-    String nickname = user.getUserNickname(); // 또는 user.getNickname();
+      User user = (User) userObj;
+      String nickname = user.getUserNickname(); // 또는 user.getNickname();
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("nickname", nickname);
+      Map<String, Object> response = new HashMap<>();
+      response.put("nickname", nickname);
 
-    return ResponseEntity.ok(response);
-}
+      return ResponseEntity.ok(response);
+  }
 
 }

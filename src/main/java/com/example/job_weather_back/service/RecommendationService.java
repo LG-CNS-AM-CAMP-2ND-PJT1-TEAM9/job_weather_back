@@ -35,7 +35,11 @@ import java.util.stream.Collectors;
 public class RecommendationService {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendationService.class);
+<<<<<<< HEAD
     private static final int MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE = 3;
+=======
+    private static final int MAX_NEWS_RECOMMENDATIONS_FOR_MAIN_PAGE = 12;
+>>>>>>> b4f1a8eaec03cc7fbaccc36024fc85994059880d
 
     private final UserRecommendationRepository userRecommendationRepository;
     private final NewsRepository newsRepository;

@@ -17,9 +17,16 @@ public class NewContentsKeyword {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+<<<<<<< HEAD
     @JoinColumn(name = "new_contents_id", nullable = false)
     private NewContents newContents;
 
+=======
+    @JoinColumn(name = "new_contents_id")
+    private NewContents newContents;
+
+
+>>>>>>> b4f1a8eaec03cc7fbaccc36024fc85994059880d
     @Column(length = 100, nullable = false)
     private String keyword;
 
