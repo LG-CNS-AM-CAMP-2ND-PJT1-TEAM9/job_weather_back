@@ -34,3 +34,7 @@ build/
 
 # Secret properties
 src/main/resources/application-secret.properties
+<<<<<<< HEAD
+src/main/resources/application-secret.properties
+=======
+>>>>>>> b4f1a8eaec03cc7fbaccc36024fc85994059880d

@@ -1,4 +1,4 @@
-package com.example.job_weather_back.controller;
+package com.example.job_weather_back.controller; // 실제 컨트롤러 패키지 경로
 
 import com.example.job_weather_back.dto.MainPageRecommendationsDto;
 import com.example.job_weather_back.service.RecommendationService;
@@ -10,12 +10,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession; // HttpSession import 추가
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger; // Logger import 추가
+import org.slf4j.LoggerFactory; // LoggerFactory import 추가
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus; // HttpStatus import 추가
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +40,7 @@ public class RecommendationController {
         this.recommendationService = recommendationService;
     }
 
-    @Operation(summary = "메인 페이지 추천 콘텐츠 조회", description = "로그인 상태에 따라 맞춤형 또는 일반 추천 뉴스 목록을 반환합니다. 추천 데이터는 백그라운드 스케줄러에 의해 주기적으로 업데이트됩니다.")
+    @Operation(summary = "메인 페이지 추천 콘텐츠 조회", description = "로그인 상태에 따라 맞춤형 또는 일반 추천 뉴스/채용공고 목록을 반환합니다.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "조회 성공",
                          content = { @Content(mediaType = "application/json",
